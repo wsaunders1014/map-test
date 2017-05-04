@@ -1,0 +1,109 @@
+<!doctype html>
+<html>
+<head>
+<script type="text/javascript" src="http://maps.googleapis.com/maps/api/js?key=AIzaSyAOj0_u0DRE2dK8X9YptdCXtxt89UCqfoo"></script>
+<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+<style>
+body {
+	font-family : helvetica, arial;
+}
+button {
+	padding: 5px;
+	font-size: 120%;
+}
+textarea {
+	float: left;
+	clear: none;
+	width: 200px;
+	height: 360px;
+	margin-left: 10px;
+}
+#map-canvas {
+	width:700px;
+	height:400px;
+	float: left;
+	clear: none;
+}
+</style>
+</head>
+<body>
+
+<h3>Click on the map to create a polygon - then click "search" to find zipcodes</h3>
+<button id="search">Search</button>
+<hr>
+<div id="map-canvas"></div>
+&nbsp;&nbsp;zipcodes :<br>
+<textarea id="zipcodes"></textarea>
+
+<script>
+var usaCenter = new google.maps.LatLng(39.8106460, -98.5569760);
+var poly, map;
+var markers = [];
+var path = new google.maps.MVCArray;
+
+function createMap() {
+	map = new google.maps.Map(document.getElementById("map-canvas"), {
+		center: usaCenter,
+		zoom: 4,
+		mapTypeId: google.maps.MapTypeId.TERRAIN,
+		zoomControl: true,
+		streetViewControl: false,
+		zoomControlOptions: {
+			style: google.maps.ZoomControlStyle.SMALL
+		}
+	});
+
+	poly = new google.maps.Polygon({
+		strokeWeight: 1,
+		strokeColor: '#FFF380', 
+		fillColor: '#FFF380'
+	});
+	poly.setMap(map);
+	poly.setPaths(new google.maps.MVCArray([path]));
+
+	google.maps.event.addListener(map, 'click', addPolygonPoint);
+}
+
+function addPolygonPoint(event) {
+	path.insertAt(path.length, event.latLng);
+	var marker = new google.maps.Marker({
+		icon : 'csquare.png',
+		position: event.latLng,
+		map: map,
+		draggable: true
+	});
+	markers.push(marker);
+	google.maps.event.addListener(marker, 'click', function() {
+		marker.setMap(null);
+		for (var i = 0, I = markers.length; i < I && markers[i] != marker; ++i);
+		markers.splice(i, 1);
+		path.removeAt(i);
+	});
+	google.maps.event.addListener(marker, 'dragend', function() {
+		for (var i = 0, I = markers.length; i < I && markers[i] != marker; ++i);
+		path.setAt(i, marker.getPosition());
+	});
+}
+
+google.maps.event.addDomListener(window, 'load', createMap);
+
+$("#search").click(function() {
+	var latLngs = '';
+	for (var i=0;i<markers.length;i++) {
+		var ll=markers[i].getPosition().toUrlValue(4);
+		latLngs+='['+ll.toString()+']';
+	}
+	var url='php/zip.php?latlngs='+latLngs;
+	$.ajax({
+		url: url, 
+		success : function(response) {
+			$('#zipcodes').text(response);
+		}
+	});
+});
+
+</script>
+
+
+</body>
+</html>
